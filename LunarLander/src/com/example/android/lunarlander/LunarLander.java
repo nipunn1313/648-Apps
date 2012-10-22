@@ -16,7 +16,14 @@
 
 package com.example.android.lunarlander;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
+import android.content.Context;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -42,7 +49,7 @@ import com.example.android.lunarlander.LunarView.LunarThread;
  * <li>handling onPause() in an animation
  * </ul>
  */
-public class LunarLander extends Activity {
+@TargetApi(3) public class LunarLander extends Activity {
     private static final int MENU_EASY = 1;
 
     private static final int MENU_HARD = 2;
@@ -62,6 +69,10 @@ public class LunarLander extends Activity {
 
     /** A handle to the View in which the game is running. */
     private LunarView mLunarView;
+
+    private SensorManager mSensorManager;
+
+    private Sensor mSensor;
 
     /**
      * Invoked during init to give the Activity a chance to set up its Menu.
@@ -166,6 +177,16 @@ public class LunarLander extends Activity {
         
         // give the LunarView a handle to the TextView used for messages
         mLunarView.setTextView((TextView) findViewById(R.id.text));
+        
+        mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        mSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
+        mSensorManager.registerListener(new SensorEventListener() {
+            public void onAccuracyChanged(Sensor sensor, int accuracy) {
+            }
+            public void onSensorChanged(SensorEvent event) {
+                mLunarThread.onSensorChanged(event);
+            }
+        }, mSensor, SensorManager.SENSOR_DELAY_GAME);
 
         if (savedInstanceState == null) {
             // we were just launched: set up a new game

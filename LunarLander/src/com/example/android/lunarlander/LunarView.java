@@ -16,6 +16,7 @@
 
 package com.example.android.lunarlander;
 
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -24,6 +25,7 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
+import android.hardware.SensorEvent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -47,10 +49,12 @@ import android.widget.TextView;
  * ship, and does an invalidate() to prompt another draw() as soon as possible
  * by the system.
  */
-class LunarView extends SurfaceView implements SurfaceHolder.Callback {
+@TargetApi(3) class LunarView extends SurfaceView implements SurfaceHolder.Callback {
     public enum ControlsType {
         CONTROLS_ON_SCREEN, CONTROLS_ORIENTATION
     };
+
+    private ControlsType mControlsType;
 
     class LunarThread extends Thread {
         /*
@@ -217,8 +221,6 @@ class LunarView extends SurfaceView implements SurfaceHolder.Callback {
 
         /** Y of lander center. */
         private double mY;
-
-        private ControlsType mControlsType;
 
         public LunarThread(SurfaceHolder surfaceHolder, Context context,
                 Handler handler) {
@@ -828,6 +830,23 @@ class LunarView extends SurfaceView implements SurfaceHolder.Callback {
                     throw new RuntimeException("Unknown CheckedChangeID = " + id);
             }
         }
+
+        public void onSensorChanged(SensorEvent event) {
+            if (mControlsType != ControlsType.CONTROLS_ORIENTATION) return;
+            
+            float x = event.values[0];
+            float y = event.values[1];
+            
+            if (x < -2.0) onKeyDown(KeyEvent.KEYCODE_DPAD_RIGHT, null);
+            else if (x > 2.0) onKeyDown(KeyEvent.KEYCODE_DPAD_LEFT, null);
+            else {
+                onKeyUp(KeyEvent.KEYCODE_DPAD_LEFT, null);
+                onKeyUp(KeyEvent.KEYCODE_DPAD_RIGHT, null);
+            }
+            
+            if (y > 2.0) onKeyDown(KeyEvent.KEYCODE_SPACE, null);
+            else onKeyUp(KeyEvent.KEYCODE_SPACE, null);
+        }
     }
 
     /** Handle to the application context, used to e.g. fetch Drawables. */
@@ -863,10 +882,12 @@ class LunarView extends SurfaceView implements SurfaceHolder.Callback {
                 int mode = m.getData().getInt("mode");
                 switch (mode) {
                     case LunarThread.STATE_RUNNING:
+                        boolean haveButtons = (mControlsType == ControlsType.CONTROLS_ON_SCREEN);
+                        int visibility = haveButtons ? VISIBLE : GONE;
                         mBS.setText(R.string.menu_pause);
-                        mBF.setVisibility(VISIBLE);
-                        mBL.setVisibility(VISIBLE);
-                        mBR.setVisibility(VISIBLE);
+                        mBF.setVisibility(visibility);
+                        mBL.setVisibility(visibility);
+                        mBR.setVisibility(visibility);
                         mR1.setVisibility(GONE);
                         mR2.setVisibility(GONE);
                         break;
