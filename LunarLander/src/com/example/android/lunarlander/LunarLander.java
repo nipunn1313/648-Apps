@@ -19,8 +19,16 @@ package com.example.android.lunarlander;
 import android.app.Activity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.View.OnTouchListener;
+import android.widget.Button;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
+import android.widget.RadioGroup.OnCheckedChangeListener;
 import android.widget.TextView;
 
 import com.example.android.lunarlander.LunarView.LunarThread;
@@ -130,6 +138,32 @@ public class LunarLander extends Activity {
         mLunarView = (LunarView) findViewById(R.id.lunar);
         mLunarThread = mLunarView.getThread();
 
+        Button bL = (Button) findViewById(R.id.leftButton);
+        Button bR = (Button) findViewById(R.id.rightButton);
+        Button bF = (Button) findViewById(R.id.fireButton);
+        Button bS = (Button) findViewById(R.id.startButton);
+        RadioButton r1 = (RadioButton) findViewById(R.id.radioOnScreen);
+        RadioButton r2 = (RadioButton) findViewById(R.id.radioOrientationSensor);
+        RadioGroup rg = (RadioGroup) findViewById(R.id.radioGroup1);
+        View[] buttons = { bL, bR, bF, bS };
+        
+        OnTouchListener listener = new OnTouchListener() {
+        	public boolean onTouch(View v, MotionEvent event) {
+        		return mLunarThread.onTouch(v, event);
+        	}
+        };
+        OnCheckedChangeListener occl = new OnCheckedChangeListener() {
+            public void onCheckedChanged(RadioGroup rg, int id) {
+                mLunarThread.onCheckedChange(id);
+            }
+        };
+        for (View b : buttons) {
+            b.setOnTouchListener(listener);
+        }
+        rg.setOnCheckedChangeListener(occl);
+        
+        mLunarView.setButtons(bL, bR, bF, bS, r1, r2);
+        
         // give the LunarView a handle to the TextView used for messages
         mLunarView.setTextView((TextView) findViewById(R.id.text));
 

@@ -29,9 +29,12 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.AttributeSet;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.widget.Button;
+import android.widget.RadioButton;
 import android.widget.TextView;
 
 
@@ -45,6 +48,10 @@ import android.widget.TextView;
  * by the system.
  */
 class LunarView extends SurfaceView implements SurfaceHolder.Callback {
+    public enum ControlsType {
+        CONTROLS_ON_SCREEN, CONTROLS_ORIENTATION
+    };
+
     class LunarThread extends Thread {
         /*
          * Difficulty setting constants
@@ -210,6 +217,8 @@ class LunarView extends SurfaceView implements SurfaceHolder.Callback {
 
         /** Y of lander center. */
         private double mY;
+
+        private ControlsType mControlsType;
 
         public LunarThread(SurfaceHolder surfaceHolder, Context context,
                 Handler handler) {
@@ -467,6 +476,7 @@ class LunarView extends SurfaceView implements SurfaceHolder.Callback {
                     Bundle b = new Bundle();
                     b.putString("text", "");
                     b.putInt("viz", View.INVISIBLE);
+                    b.putInt("mode", mMode);
                     msg.setData(b);
                     mHandler.sendMessage(msg);
                 } else {
@@ -495,6 +505,7 @@ class LunarView extends SurfaceView implements SurfaceHolder.Callback {
                     Bundle b = new Bundle();
                     b.putString("text", str.toString());
                     b.putInt("viz", View.VISIBLE);
+                    b.putInt("mode", mMode);
                     msg.setData(b);
                     mHandler.sendMessage(msg);
                 }
@@ -773,6 +784,50 @@ class LunarView extends SurfaceView implements SurfaceHolder.Callback {
                 setState(result, message);
             }
         }
+
+        public boolean onTouch(View v, MotionEvent event) {
+            int keyCode;
+
+            switch (v.getId()) {
+                case R.id.leftButton:
+                    keyCode = KeyEvent.KEYCODE_DPAD_LEFT;
+                    break;
+                case R.id.rightButton:
+                    keyCode = KeyEvent.KEYCODE_DPAD_RIGHT;
+                    break;
+                case R.id.fireButton:
+                    keyCode = KeyEvent.KEYCODE_SPACE;
+                    break;
+                case R.id.startButton:
+                    keyCode = KeyEvent.KEYCODE_DPAD_UP;
+                    break;
+                default:
+                    throw new RuntimeException(
+                            "onTouch called for unknown View: " + v.getId());
+            }
+
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    return onKeyDown(keyCode, null);
+                case MotionEvent.ACTION_UP:
+                    return onKeyUp(keyCode, null);
+                default:
+                    return false;
+            }
+        }
+        
+        public void onCheckedChange(int id) {
+            switch (id) {
+                case R.id.radioOnScreen:
+                    mControlsType = ControlsType.CONTROLS_ON_SCREEN;
+                    break;
+                case R.id.radioOrientationSensor:
+                    mControlsType = ControlsType.CONTROLS_ORIENTATION;
+                    break;
+                default:
+                    throw new RuntimeException("Unknown CheckedChangeID = " + id);
+            }
+        }
     }
 
     /** Handle to the application context, used to e.g. fetch Drawables. */
@@ -780,6 +835,13 @@ class LunarView extends SurfaceView implements SurfaceHolder.Callback {
 
     /** Pointer to the text view to display "Paused.." etc. */
     private TextView mStatusText;
+    
+    private Button mBL;
+    private Button mBR;
+    private Button mBF;
+    private Button mBS;
+    private RadioButton mR1;
+    private RadioButton mR2;
 
     /** The thread that actually draws the animation */
     private LunarThread thread;
@@ -797,6 +859,29 @@ class LunarView extends SurfaceView implements SurfaceHolder.Callback {
             public void handleMessage(Message m) {
                 mStatusText.setVisibility(m.getData().getInt("viz"));
                 mStatusText.setText(m.getData().getString("text"));
+                
+                int mode = m.getData().getInt("mode");
+                switch (mode) {
+                    case LunarThread.STATE_RUNNING:
+                        mBS.setText(R.string.menu_pause);
+                        mBF.setVisibility(VISIBLE);
+                        mBL.setVisibility(VISIBLE);
+                        mBR.setVisibility(VISIBLE);
+                        mR1.setVisibility(GONE);
+                        mR2.setVisibility(GONE);
+                        break;
+                    case LunarThread.STATE_PAUSE:
+                    default:
+                        if (mode == LunarThread.STATE_PAUSE)
+                            mBS.setText(R.string.menu_resume);
+                        else
+                            mBS.setText(R.string.menu_start);
+                        mBF.setVisibility(GONE);
+                        mBL.setVisibility(GONE);
+                        mBR.setVisibility(GONE);
+                        mR1.setVisibility(VISIBLE);
+                        mR2.setVisibility(VISIBLE);                        
+                }
             }
         });
 
@@ -843,6 +928,16 @@ class LunarView extends SurfaceView implements SurfaceHolder.Callback {
      */
     public void setTextView(TextView textView) {
         mStatusText = textView;
+    }
+
+    public void setButtons(Button bL, Button bR, Button bF, Button bS,
+            RadioButton r1, RadioButton r2) {
+        mBL = bL;
+        mBR = bR;
+        mBF = bF;
+        mBS = bS;
+        mR1 = r1;
+        mR2 = r2;
     }
 
     /* Callback invoked when the surface dimensions change. */
