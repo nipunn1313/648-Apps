@@ -16,23 +16,21 @@
 
 package com.example.android.lunarlander;
 
-import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
-import android.hardware.SensorListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnTouchListener;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.RadioGroup.OnCheckedChangeListener;
@@ -49,7 +47,7 @@ import com.example.android.lunarlander.LunarView.LunarThread;
  * <li>handling onPause() in an animation
  * </ul>
  */
-@TargetApi(3) public class LunarLander extends Activity {
+public class LunarLander extends Activity {
     private static final int MENU_EASY = 1;
 
     private static final int MENU_HARD = 2;
@@ -65,7 +63,7 @@ import com.example.android.lunarlander.LunarView.LunarThread;
     private static final int MENU_STOP = 7;
 
     /** A handle to the thread that's actually running the animation. */
-    private LunarThread mLunarThread;
+    //private LunarThread mLunarThread;
 
     /** A handle to the View in which the game is running. */
     private LunarView mLunarView;
@@ -83,14 +81,19 @@ import com.example.android.lunarlander.LunarView.LunarThread;
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
+        
+        MenuItem e;
 
         menu.add(0, MENU_START, 0, R.string.menu_start);
         menu.add(0, MENU_STOP, 0, R.string.menu_stop);
         menu.add(0, MENU_PAUSE, 0, R.string.menu_pause);
         menu.add(0, MENU_RESUME, 0, R.string.menu_resume);
-        menu.add(0, MENU_EASY, 0, R.string.menu_easy);
-        menu.add(0, MENU_MEDIUM, 0, R.string.menu_medium);
-        menu.add(0, MENU_HARD, 0, R.string.menu_hard);
+        e = menu.add(0, MENU_EASY, 0, R.string.menu_easy);
+        e.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        e = menu.add(0, MENU_MEDIUM, 0, R.string.menu_medium);
+        e.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        e = menu.add(0, MENU_HARD, 0, R.string.menu_hard);
+        e.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
 
         return true;
     }
@@ -106,26 +109,26 @@ import com.example.android.lunarlander.LunarView.LunarThread;
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case MENU_START:
-                mLunarThread.doStart();
+                mLunarView.getThread().doStart();
                 return true;
             case MENU_STOP:
-                mLunarThread.setState(LunarThread.STATE_LOSE,
+                mLunarView.getThread().setState(LunarThread.STATE_LOSE,
                         getText(R.string.message_stopped));
                 return true;
             case MENU_PAUSE:
-                mLunarThread.pause();
+                mLunarView.getThread().pause();
                 return true;
             case MENU_RESUME:
-                mLunarThread.unpause();
+                mLunarView.getThread().unpause();
                 return true;
             case MENU_EASY:
-                mLunarThread.setDifficulty(LunarThread.DIFFICULTY_EASY);
+                mLunarView.getThread().setDifficulty(LunarThread.DIFFICULTY_EASY);
                 return true;
             case MENU_MEDIUM:
-                mLunarThread.setDifficulty(LunarThread.DIFFICULTY_MEDIUM);
+                mLunarView.getThread().setDifficulty(LunarThread.DIFFICULTY_MEDIUM);
                 return true;
             case MENU_HARD:
-                mLunarThread.setDifficulty(LunarThread.DIFFICULTY_HARD);
+                mLunarView.getThread().setDifficulty(LunarThread.DIFFICULTY_HARD);
                 return true;
         }
 
@@ -147,7 +150,6 @@ import com.example.android.lunarlander.LunarView.LunarThread;
 
         // get handles to the LunarView from XML, and its LunarThread
         mLunarView = (LunarView) findViewById(R.id.lunar);
-        mLunarThread = mLunarView.getThread();
 
         Button bL = (Button) findViewById(R.id.leftButton);
         Button bR = (Button) findViewById(R.id.rightButton);
@@ -156,16 +158,30 @@ import com.example.android.lunarlander.LunarView.LunarThread;
         RadioButton r1 = (RadioButton) findViewById(R.id.radioOnScreen);
         RadioButton r2 = (RadioButton) findViewById(R.id.radioOrientationSensor);
         RadioGroup rg = (RadioGroup) findViewById(R.id.radioGroup1);
-        View[] buttons = { bL, bR, bF, bS };
+        
+        Button YEAH = (Button) findViewById(R.id.sendScoreButton);
+        Button NAH = (Button) findViewById(R.id.noSendScoreButton);
+        EditText NAME = (EditText) findViewById(R.id.nameForm);
+        TextView SubmitText = (TextView) findViewById(R.id.submitText);
+        Button SubmitButton = (Button) findViewById(R.id.submitButton);
+        TextView HighScores = (TextView) findViewById(R.id.highScores);
+        TextView YourScore = (TextView) findViewById(R.id.YourScore);
+        EditText SERVER = (EditText) findViewById(R.id.serverForm);
+        EditText PORT = (EditText) findViewById(R.id.portForm);
+        
+        View regularLayout = findViewById(R.id.regularLayout);
+        View scoresLayout = findViewById(R.id.scoresLayout);
+        
+        View[] buttons = { bL, bR, bF, bS, YEAH, NAH, SubmitButton };
         
         OnTouchListener listener = new OnTouchListener() {
         	public boolean onTouch(View v, MotionEvent event) {
-        		return mLunarThread.onTouch(v, event);
+        		return mLunarView.getThread().onTouch(v, event);
         	}
         };
         OnCheckedChangeListener occl = new OnCheckedChangeListener() {
             public void onCheckedChanged(RadioGroup rg, int id) {
-                mLunarThread.onCheckedChange(id);
+                mLunarView.getThread().onCheckedChange(id);
             }
         };
         for (View b : buttons) {
@@ -173,7 +189,9 @@ import com.example.android.lunarlander.LunarView.LunarThread;
         }
         rg.setOnCheckedChangeListener(occl);
         
-        mLunarView.setButtons(bL, bR, bF, bS, r1, r2);
+        mLunarView.setButtons(bL, bR, bF, bS, r1, r2, 
+                YEAH, NAH, NAME, SubmitText, SubmitButton, HighScores,
+                regularLayout, scoresLayout, YourScore, SERVER, PORT);
         
         // give the LunarView a handle to the TextView used for messages
         mLunarView.setTextView((TextView) findViewById(R.id.text));
@@ -184,17 +202,17 @@ import com.example.android.lunarlander.LunarView.LunarThread;
             public void onAccuracyChanged(Sensor sensor, int accuracy) {
             }
             public void onSensorChanged(SensorEvent event) {
-                mLunarThread.onSensorChanged(event);
+                mLunarView.getThread().onSensorChanged(event);
             }
         }, mSensor, SensorManager.SENSOR_DELAY_GAME);
 
         if (savedInstanceState == null) {
             // we were just launched: set up a new game
-            mLunarThread.setState(LunarThread.STATE_READY);
+            mLunarView.getThread().setState(LunarThread.STATE_READY);
             Log.w(this.getClass().getName(), "SIS is null");
         } else {
             // we are being restored: resume a previous game
-            mLunarThread.restoreState(savedInstanceState);
+            mLunarView.getThread().restoreState(savedInstanceState);
             Log.w(this.getClass().getName(), "SIS is nonnull");
         }
     }
@@ -207,6 +225,12 @@ import com.example.android.lunarlander.LunarView.LunarThread;
         super.onPause();
         mLunarView.getThread().pause(); // pause game when Activity pauses
     }
+    
+    @Override
+    public boolean onTouchEvent(MotionEvent e) {
+        super.onTouchEvent(e);
+        return mLunarView.getThread().onTouchEvent(e); 
+    }
 
     /**
      * Notification that something is about to happen, to give the Activity a
@@ -218,7 +242,7 @@ import com.example.android.lunarlander.LunarView.LunarThread;
     protected void onSaveInstanceState(Bundle outState) {
         // just have the View's thread save its state into our Bundle
         super.onSaveInstanceState(outState);
-        mLunarThread.saveState(outState);
+        mLunarView.getThread().saveState(outState);
         Log.w(this.getClass().getName(), "SIS called");
     }
 }

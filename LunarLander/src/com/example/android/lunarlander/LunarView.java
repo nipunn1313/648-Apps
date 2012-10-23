@@ -16,6 +16,15 @@
 
 package com.example.android.lunarlander;
 
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
+import java.util.Scanner;
+
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.Resources;
@@ -29,6 +38,7 @@ import android.hardware.SensorEvent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.text.Editable;
 import android.util.AttributeSet;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -36,6 +46,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.TextView;
 
@@ -54,7 +65,7 @@ import android.widget.TextView;
         CONTROLS_ON_SCREEN, CONTROLS_ORIENTATION
     };
 
-    private ControlsType mControlsType;
+    private ControlsType mControlsType = ControlsType.CONTROLS_ON_SCREEN;
 
     class LunarThread extends Thread {
         /*
@@ -83,6 +94,11 @@ import android.widget.TextView;
         public static final int STATE_READY = 3;
         public static final int STATE_RUNNING = 4;
         public static final int STATE_WIN = 5;
+        public static final int STATE_SHOWING_YOUR_SCORE = 6;
+        public static final int STATE_ASKING_YOUR_NAME = 7;
+        public static final int STATE_SENDING_YOUR_SCORE = 8;
+        public static final int STATE_ASKING_FOR_HIGH_SCORES = 9;
+        public static final int STATE_SHOWING_HIGH_SCORE = 10;
 
         /*
          * Goal condition constants
@@ -221,6 +237,7 @@ import android.widget.TextView;
 
         /** Y of lander center. */
         private double mY;
+        public int mScore;
 
         public LunarThread(SurfaceHolder surfaceHolder, Context context,
                 Handler handler) {
@@ -283,6 +300,9 @@ import android.widget.TextView;
                 mGoalSpeed = TARGET_SPEED;
                 mGoalAngle = TARGET_ANGLE;
                 int speedInit = PHYS_SPEED_INIT;
+                
+                if (mWinsInARow == 0)
+                    mScore = 0;
 
                 // Adjust difficulty params for EASY/HARD
                 if (mDifficulty == DIFFICULTY_EASY) {
@@ -471,6 +491,7 @@ import android.widget.TextView;
              * thread, which updates the user-text View.
              */
             synchronized (mSurfaceHolder) {
+                System.out.println("State transition " + mMode + "->" + mode);
                 mMode = mode;
 
                 if (mMode == STATE_RUNNING) {
@@ -490,12 +511,14 @@ import android.widget.TextView;
                         str = res.getText(R.string.mode_ready);
                     else if (mMode == STATE_PAUSE)
                         str = res.getText(R.string.mode_pause);
-                    else if (mMode == STATE_LOSE)
+                    else if (mMode == STATE_LOSE) {
                         str = res.getText(R.string.mode_lose);
-                    else if (mMode == STATE_WIN)
+                    }
+                    else if (mMode == STATE_WIN) {
                         str = res.getString(R.string.mode_win_prefix)
                                 + mWinsInARow + " "
                                 + res.getString(R.string.mode_win_suffix);
+                    }
 
                     if (message != null) {
                         str = message + "\n" + str;
@@ -508,6 +531,7 @@ import android.widget.TextView;
                     b.putString("text", str.toString());
                     b.putInt("viz", View.VISIBLE);
                     b.putInt("mode", mMode);
+                    b.putInt("score", mScore);
                     msg.setData(b);
                     mHandler.sendMessage(msg);
                 }
@@ -779,8 +803,9 @@ import android.widget.TextView;
                 } else if (speed > mGoalSpeed) {
                     message = res.getText(R.string.message_too_fast);
                 } else {
-                    result = STATE_WIN;
+                    result = STATE_SHOWING_YOUR_SCORE;
                     mWinsInARow++;
+                    mScore += 100 + (int) ((mFuel / PHYS_FUEL_MAX) * 100);
                 }
 
                 setState(result, message);
@@ -789,6 +814,7 @@ import android.widget.TextView;
 
         public boolean onTouch(View v, MotionEvent event) {
             int keyCode;
+            boolean down = event.getAction() == MotionEvent.ACTION_DOWN;
 
             switch (v.getId()) {
                 case R.id.leftButton:
@@ -803,6 +829,18 @@ import android.widget.TextView;
                 case R.id.startButton:
                     keyCode = KeyEvent.KEYCODE_DPAD_UP;
                     break;
+                case R.id.sendScoreButton:
+                    if (down)
+                        this.setState(STATE_ASKING_YOUR_NAME);
+                    return true;
+                case R.id.noSendScoreButton:
+                    if (down)
+                        setState(STATE_ASKING_FOR_HIGH_SCORES);
+                    return true;
+                case R.id.submitButton:
+                    if (down)
+                        setState(STATE_SENDING_YOUR_SCORE);
+                    return true;
                 default:
                     throw new RuntimeException(
                             "onTouch called for unknown View: " + v.getId());
@@ -847,6 +885,15 @@ import android.widget.TextView;
             if (y > 2.0) onKeyDown(KeyEvent.KEYCODE_SPACE, null);
             else onKeyUp(KeyEvent.KEYCODE_SPACE, null);
         }
+
+        public boolean onTouchEvent(MotionEvent e) {
+            if (e.getAction() == MotionEvent.ACTION_DOWN &&
+                    mMode == STATE_SHOWING_HIGH_SCORE) {
+                setState(STATE_WIN);
+                return true;
+            }
+            return false;
+        }
     }
 
     /** Handle to the application context, used to e.g. fetch Drawables. */
@@ -861,51 +908,31 @@ import android.widget.TextView;
     private Button mBS;
     private RadioButton mR1;
     private RadioButton mR2;
+    private Button mYEAH;
+    private Button mNAH;
+    private EditText mNAME;
+    private TextView mSubmitText;
+    private Button mSubmitButton;
+    private TextView mHighScores;
+    private View mRegularLayout;
+    private View mScoresLayout;
+    private EditText mSERVER;
+    private EditText mPORT;
 
     /** The thread that actually draws the animation */
     private LunarThread thread;
 
+    private TextView mYourScore;
+
     public LunarView(Context context, AttributeSet attrs) {
         super(context, attrs);
-
-        // register our interest in hearing about changes to our surface
+        
+        this.mContext = context;
+        
         SurfaceHolder holder = getHolder();
         holder.addCallback(this);
-
-        // create thread only; it's started in surfaceCreated()
-        thread = new LunarThread(holder, context, new Handler() {
-            @Override
-            public void handleMessage(Message m) {
-                mStatusText.setVisibility(m.getData().getInt("viz"));
-                mStatusText.setText(m.getData().getString("text"));
-                
-                int mode = m.getData().getInt("mode");
-                switch (mode) {
-                    case LunarThread.STATE_RUNNING:
-                        boolean haveButtons = (mControlsType == ControlsType.CONTROLS_ON_SCREEN);
-                        int visibility = haveButtons ? VISIBLE : GONE;
-                        mBS.setText(R.string.menu_pause);
-                        mBF.setVisibility(visibility);
-                        mBL.setVisibility(visibility);
-                        mBR.setVisibility(visibility);
-                        mR1.setVisibility(GONE);
-                        mR2.setVisibility(GONE);
-                        break;
-                    case LunarThread.STATE_PAUSE:
-                    default:
-                        if (mode == LunarThread.STATE_PAUSE)
-                            mBS.setText(R.string.menu_resume);
-                        else
-                            mBS.setText(R.string.menu_start);
-                        mBF.setVisibility(GONE);
-                        mBL.setVisibility(GONE);
-                        mBR.setVisibility(GONE);
-                        mR1.setVisibility(VISIBLE);
-                        mR2.setVisibility(VISIBLE);                        
-                }
-            }
-        });
-
+        makeNewThread(holder);
+        
         setFocusable(true); // make sure we get key events
     }
 
@@ -952,13 +979,27 @@ import android.widget.TextView;
     }
 
     public void setButtons(Button bL, Button bR, Button bF, Button bS,
-            RadioButton r1, RadioButton r2) {
+            RadioButton r1, RadioButton r2, 
+            Button yEAH, Button nAH, EditText nAME, TextView submitText, Button submitButton, 
+            TextView highScores, View regularLayout, View scoresLayout, TextView yourScore,
+            EditText sERVER, EditText pORT) {
         mBL = bL;
         mBR = bR;
         mBF = bF;
         mBS = bS;
         mR1 = r1;
         mR2 = r2;
+        mYEAH = yEAH;
+        mNAH = nAH;
+        mNAME = nAME;
+        mSubmitText = submitText;
+        mSubmitButton = submitButton;
+        mHighScores = highScores;
+        mRegularLayout = regularLayout;
+        mScoresLayout = scoresLayout;
+        mYourScore = yourScore;
+        mSERVER = sERVER;
+        mPORT = pORT;
     }
 
     /* Callback invoked when the surface dimensions change. */
@@ -971,7 +1012,7 @@ import android.widget.TextView;
      * Callback invoked when the Surface has been created and is ready to be
      * used.
      */
-    public void surfaceCreated(SurfaceHolder holder) {
+    public void surfaceCreated(SurfaceHolder holder) {// register our interest in hearing about changes to our surface
         // start the thread here so that we don't busy-wait in run()
         // waiting for the surface to be created
         thread.setRunning(true);
@@ -994,6 +1035,295 @@ import android.widget.TextView;
                 retry = false;
             } catch (InterruptedException e) {
             }
+        }
+    }
+    
+    public void makeNewThread(SurfaceHolder holder) {// create thread only; it's started in surfaceCreated()
+        thread = new LunarThread(holder, mContext, new Handler() {
+            @Override
+            public void handleMessage(Message m) {
+                mStatusText.setVisibility(m.getData().getInt("viz"));
+                mStatusText.setText(m.getData().getString("text"));
+                
+                int mode = m.getData().getInt("mode");
+                int score = m.getData().getInt("score");
+                
+                if (mode == LunarThread.STATE_SENDING_YOUR_SCORE ||
+                        mode == LunarThread.STATE_SHOWING_HIGH_SCORE ||
+                        mode == LunarThread.STATE_SHOWING_YOUR_SCORE ||
+                        mode == LunarThread.STATE_ASKING_YOUR_NAME ||
+                        mode == LunarThread.STATE_ASKING_FOR_HIGH_SCORES) {
+                    mRegularLayout.setVisibility(View.GONE);
+                    mScoresLayout.setVisibility(View.VISIBLE);
+                } else {
+                    mRegularLayout.setVisibility(View.VISIBLE);
+                    mScoresLayout.setVisibility(View.GONE);
+                }
+                
+                switch (mode) {
+                    case LunarThread.STATE_RUNNING:
+                        boolean haveButtons = (mControlsType == ControlsType.CONTROLS_ON_SCREEN);
+                        int visibility = haveButtons ? VISIBLE : GONE;
+                        mBS.setText(R.string.menu_pause);
+                        mBF.setVisibility(visibility);
+                        mBL.setVisibility(visibility);
+                        mBR.setVisibility(visibility);
+                        mR1.setVisibility(GONE);
+                        mR2.setVisibility(GONE);
+                        break;
+                    case LunarThread.STATE_PAUSE:
+                    case LunarThread.STATE_LOSE:
+                    case LunarThread.STATE_READY:
+                    case LunarThread.STATE_WIN:
+                        if (mode == LunarThread.STATE_PAUSE)
+                            mBS.setText(R.string.menu_resume);
+                        else
+                            mBS.setText(R.string.menu_start);
+                        mBF.setVisibility(GONE);
+                        mBL.setVisibility(GONE);
+                        mBR.setVisibility(GONE);
+                        mR1.setVisibility(VISIBLE);
+                        mR2.setVisibility(VISIBLE);
+                        break;
+                        
+                    case LunarThread.STATE_SHOWING_YOUR_SCORE:
+                        mYourScore.setText("Your Score = " + score);
+                        mSubmitText.setVisibility(View.VISIBLE);
+                        mNAH.setVisibility(View.VISIBLE);
+                        mYEAH.setVisibility(View.VISIBLE);
+                        mNAME.setVisibility(View.VISIBLE);
+                        mHighScores.setVisibility(View.INVISIBLE);
+                        mSERVER.setVisibility(View.VISIBLE);
+                        mPORT.setVisibility(View.VISIBLE);
+                        break;
+                    case LunarThread.STATE_ASKING_YOUR_NAME:
+                        mNAH.setVisibility(View.INVISIBLE);
+                        mYEAH.setVisibility(View.INVISIBLE);
+                        mNAME.setVisibility(View.VISIBLE);
+                        mSubmitButton.setVisibility(View.VISIBLE);
+                        mSubmitText.setVisibility(View.INVISIBLE);
+                        mHighScores.setVisibility(View.INVISIBLE);
+                        mSERVER.setVisibility(View.VISIBLE);
+                        mPORT.setVisibility(View.VISIBLE);
+                        break;
+                    case LunarThread.STATE_SENDING_YOUR_SCORE:
+                        mNAH.setVisibility(View.INVISIBLE);
+                        mYEAH.setVisibility(View.INVISIBLE);
+                        mNAME.setVisibility(View.INVISIBLE);
+                        mSubmitText.setVisibility(View.INVISIBLE);
+                        mSubmitButton.setVisibility(View.INVISIBLE);
+                        mSERVER.setVisibility(View.INVISIBLE);
+                        mPORT.setVisibility(View.INVISIBLE);
+                        mHighScores.setText("Sending your score...");
+                        mHighScores.setVisibility(View.VISIBLE);
+                        submit(thread.mScore);
+                        break;
+                    case LunarThread.STATE_ASKING_FOR_HIGH_SCORES:
+                        mNAH.setVisibility(View.INVISIBLE);
+                        mYEAH.setVisibility(View.INVISIBLE);
+                        mNAME.setVisibility(View.INVISIBLE);
+                        mSubmitText.setVisibility(View.INVISIBLE);
+                        mSubmitButton.setVisibility(View.INVISIBLE);
+                        mSERVER.setVisibility(View.INVISIBLE);
+                        mPORT.setVisibility(View.INVISIBLE);
+                        mHighScores.setText("Querying high scores...");
+                        mHighScores.setVisibility(View.VISIBLE);
+                        queryForScores();
+                        break;
+                    case LunarThread.STATE_SHOWING_HIGH_SCORE:
+                        mNAH.setVisibility(View.INVISIBLE);
+                        mYEAH.setVisibility(View.INVISIBLE);
+                        mNAME.setVisibility(View.INVISIBLE);
+                        mSubmitText.setVisibility(View.INVISIBLE);
+                        mSubmitButton.setVisibility(View.INVISIBLE);
+                        mSERVER.setVisibility(View.INVISIBLE);
+                        mPORT.setVisibility(View.INVISIBLE);
+                        String scores = getScores();
+                        mHighScores.setText(scores);
+                        mHighScores.setVisibility(View.VISIBLE);
+                        break;
+                    default:
+                        throw new RuntimeException("Unknown staaaaate: " + mode);
+                }
+            }
+        });
+    }
+    
+    public void submit(int score) {
+        Editable eTxt = mNAME.getText();
+        String name = eTxt.toString();
+        name = name.replaceAll(" ", "_");
+        if (name.length() == 0) {
+            name = "Name";
+        }
+        
+        Runnable r = new SubmitThread(name + " " + score);
+        Thread t = new Thread(r);
+        t.start();
+    }
+    
+    public class SubmitThread implements Runnable {
+        private String mesg;
+        public SubmitThread(String mesg) {
+            this.mesg = mesg;
+        }
+        
+        public void run() {
+            int[] nums = new int[4];
+            for (int i = 0; i < 4; i++)
+                nums[i] = (int) (Math.random() * 10);
+            
+            String num = "" + nums[0] + nums[1] + nums[2] + nums[3];
+            String realMesg = num + " " + mesg;
+            
+            DatagramSocket socket;
+            
+            try {
+                socket = new DatagramSocket();
+                socket.setSoTimeout(5000); // 5 seconds
+                
+                String server = mSERVER.getText().toString();
+                int port = Integer.parseInt(mPORT.getText().toString());
+                
+                InetAddress addr = InetAddress.getByName(server);
+                DatagramPacket packet = new DatagramPacket(realMesg.getBytes(), 
+                        realMesg.getBytes().length, addr, port);
+                DatagramPacket inPacket = new DatagramPacket(new byte[1024], 1024);
+                
+                for (int i = 1; i <= 2; i++) { //retries
+                    System.out.println("Sending (" + realMesg + ") to " + server + ":" + port);
+                    socket.send(packet);
+                    String token = null;
+                    String recvNum = null;
+                    try {
+                        do {
+                            socket.receive(inPacket);
+                            
+                            String s = new String(inPacket.getData(), 0, inPacket.getLength());
+                            System.out.println("Got a ("+s+")");
+                            Scanner sc = new Scanner(s);
+                            token = sc.next();
+                            recvNum = sc.next();
+                        } while (!token.equals("ACK") || !num.equals(recvNum));
+                        System.out.println("It's an ACK! Hooray!");
+                        break;
+                    } catch (SocketTimeoutException e) {
+                        continue;
+                    }
+                }
+            } catch (SocketException e) {
+                e.printStackTrace();
+                System.out.println("NOOOOOOOOO SOCKET FAILURE");
+            } catch (UnknownHostException e1) {
+                e1.printStackTrace();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
+            
+            thread.setState(LunarThread.STATE_ASKING_FOR_HIGH_SCORES);
+        }
+    }
+
+    ScoresThread mScoresThread;
+    public void queryForScores() {
+        mScoresThread = new ScoresThread();
+        Thread t = new Thread(mScoresThread);
+        t.start();
+    }
+    
+    public String getScores() {
+        String scores = mScoresThread.scores;
+        mScoresThread = null;
+        
+        Scanner sc = new Scanner(scores);
+
+        StringBuilder sb = new StringBuilder();
+        while (sc.hasNext()) {
+            sb.append(sc.next());
+            sb.append(" ");
+            if (!sc.hasNext()) break;
+            sb.append(sc.next());
+            sb.append("\n");
+        }
+        
+        if (sb.length() == 0)
+            sb.append("No scores\n");
+        
+        sb.append("Press the \"any\" key to continue");
+        
+        return sb.toString();
+    }
+    
+    public class ScoresThread implements Runnable {
+        public String scores = null;
+        
+        public void run() {int[] nums = new int[4];
+            for (int i = 0; i < 4; i++)
+                nums[i] = (int) (Math.random() * 10);
+
+            String num = "" + nums[0] + nums[1] + nums[2] + nums[3];
+            String realMesg = num + " SEND SCORES";
+        
+            DatagramSocket socket;
+        
+            try {
+                socket = new DatagramSocket();
+                socket.setSoTimeout(5000); // 5 seconds
+                
+                String server = mSERVER.getText().toString();
+                int port = Integer.parseInt(mPORT.getText().toString());
+                
+                InetAddress addr = InetAddress.getByName(server);
+                DatagramPacket packet = new DatagramPacket(realMesg.getBytes(), 
+                        realMesg.getBytes().length, addr, port);
+                DatagramPacket inPacket = new DatagramPacket(new byte[1024], 1024);
+            
+                for (int i = 1; i <= 2; i++) { //retries
+                    System.out.println("Sending (" + realMesg + ") to " + server + ":" + port);
+                    socket.send(packet);
+                    String token = null;
+                    String recvNum = null;
+                    // Listen for ACK
+                    try {
+                        do {
+                            socket.receive(inPacket);
+                            
+                            String s = new String(inPacket.getData(), 0, inPacket.getLength());
+                            System.out.println("Got a ("+s+")");
+                            Scanner sc = new Scanner(s);
+                            token = sc.next();
+                            recvNum = sc.next();
+                        } while (!token.equals("ACK") || !num.equals(recvNum));
+                        System.out.println("It's an ACK! Hooray!");
+                        break;
+                    } catch (SocketTimeoutException e) {
+                        continue;
+                    }
+                }
+                
+                // Now receive the actual scores
+                inPacket = new DatagramPacket(new byte[1024], 1024);
+            
+                socket.receive(inPacket);
+                String mesg = new String(inPacket.getData(), 0, inPacket.getLength());
+
+                System.out.println("Received (" + mesg + ")");
+                
+                Scanner sc = new Scanner(mesg);
+                String MID = sc.next();
+                scores = sc.nextLine();
+                
+                String ackStr = "ACK " + MID;
+                DatagramPacket ack = new DatagramPacket(ackStr.getBytes(),
+                        ackStr.length(), addr, inPacket.getPort());
+                socket.send(ack);
+                System.out.println("Sending (" + ackStr + ") to " + server + ":" + port);
+            } catch (IOException e) {
+                e.printStackTrace();
+                scores = "No Internet";
+            }
+            
+            thread.setState(LunarThread.STATE_SHOWING_HIGH_SCORE);
         }
     }
 }
