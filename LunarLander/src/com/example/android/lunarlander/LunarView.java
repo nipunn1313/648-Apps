@@ -25,6 +25,7 @@ import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.Scanner;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.Resources;
@@ -300,9 +301,6 @@ import android.widget.TextView;
                 mGoalSpeed = TARGET_SPEED;
                 mGoalAngle = TARGET_ANGLE;
                 int speedInit = PHYS_SPEED_INIT;
-                
-                if (mWinsInARow == 0)
-                    mScore = 0;
 
                 // Adjust difficulty params for EASY/HARD
                 if (mDifficulty == DIFFICULTY_EASY) {
@@ -805,7 +803,9 @@ import android.widget.TextView;
                 } else {
                     result = STATE_SHOWING_YOUR_SCORE;
                     mWinsInARow++;
-                    mScore += 100 + (int) ((mFuel / PHYS_FUEL_MAX) * 100);
+                    mScore = 100 + (int) ((mFuel / PHYS_FUEL_MAX) * 100);
+                    if (mDifficulty == DIFFICULTY_MEDIUM) mScore += 20;
+                    if (mDifficulty == DIFFICULTY_HARD) mScore += 40;
                 }
 
                 setState(result, message);
@@ -1038,7 +1038,7 @@ import android.widget.TextView;
         }
     }
     
-    public void makeNewThread(SurfaceHolder holder) {// create thread only; it's started in surfaceCreated()
+    @SuppressLint("HandlerLeak") public void makeNewThread(SurfaceHolder holder) {// create thread only; it's started in surfaceCreated()
         thread = new LunarThread(holder, mContext, new Handler() {
             @Override
             public void handleMessage(Message m) {
