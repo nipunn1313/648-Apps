@@ -61,6 +61,8 @@ public class LunarLander extends Activity {
     private static final int MENU_START = 6;
 
     private static final int MENU_STOP = 7;
+    
+    private static final int MENU_SETTINGS = 8;
 
     /** A handle to the thread that's actually running the animation. */
     //private LunarThread mLunarThread;
@@ -84,16 +86,23 @@ public class LunarLander extends Activity {
         
         MenuItem e;
 
+        e = menu.add(0, MENU_SETTINGS, 0, R.string.menu_settings);
+        e.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        
         menu.add(0, MENU_START, 0, R.string.menu_start);
         menu.add(0, MENU_STOP, 0, R.string.menu_stop);
         menu.add(0, MENU_PAUSE, 0, R.string.menu_pause);
         menu.add(0, MENU_RESUME, 0, R.string.menu_resume);
-        e = menu.add(0, MENU_EASY, 0, R.string.menu_easy);
+        
+        e = menu.add(1, MENU_EASY, 0, R.string.menu_easy);
         e.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
-        e = menu.add(0, MENU_MEDIUM, 0, R.string.menu_medium);
+        e = menu.add(1, MENU_MEDIUM, 0, R.string.menu_medium);
         e.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
-        e = menu.add(0, MENU_HARD, 0, R.string.menu_hard);
+        e.setChecked(true);
+        e = menu.add(1, MENU_HARD, 0, R.string.menu_hard);
         e.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        
+        menu.setGroupCheckable(1, true, true);
 
         return true;
     }
@@ -123,12 +132,18 @@ public class LunarLander extends Activity {
                 return true;
             case MENU_EASY:
                 mLunarView.getThread().setDifficulty(LunarThread.DIFFICULTY_EASY);
+                item.setChecked(true);
                 return true;
             case MENU_MEDIUM:
                 mLunarView.getThread().setDifficulty(LunarThread.DIFFICULTY_MEDIUM);
+                item.setChecked(true);
                 return true;
             case MENU_HARD:
                 mLunarView.getThread().setDifficulty(LunarThread.DIFFICULTY_HARD);
+                item.setChecked(true);
+                return true;
+            case MENU_SETTINGS:
+                mLunarView.getThread().toggleSettings();
                 return true;
         }
 

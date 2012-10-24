@@ -26,10 +26,10 @@
     <string name="menu_hard">Hard</string>
     
     <string name="mode_ready">Lunar Lander\n18-648 Embedded Real Time Systems</string>
-	<string name="mode_pause">Paused\nPress Up To Resume</string>
-	<string name="mode_lose">Game Over\nPress Up To Play</string>
+	<string name="mode_pause">Paused\nPress Resume To Resume</string>
+	<string name="mode_lose">Game Over\nPress Start To Play</string>
 	<string name="mode_win_prefix">Success!\n</string> 
-	<string name="mode_win_suffix">in a row\nPress Up to Play</string> 
+	<string name="mode_win_suffix">in a row\nPress Start to Play</string> 
 	
 	<string name="message_stopped">Stopped</string>
 	<string name="message_off_pad">Off Landing Pad</string> 
@@ -37,4 +37,5 @@
 	<string name="message_bad_angle">Bad Angle</string> 
 
     <string name="lunar_layout_text_text"></string>
+    <string name="menu_settings">Settings</string>
 </resources>

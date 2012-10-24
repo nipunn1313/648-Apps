@@ -100,6 +100,7 @@ import android.widget.TextView;
         public static final int STATE_SENDING_YOUR_SCORE = 8;
         public static final int STATE_ASKING_FOR_HIGH_SCORES = 9;
         public static final int STATE_SHOWING_HIGH_SCORE = 10;
+        public static final int STATE_SETTINGS = 11;
 
         /*
          * Goal condition constants
@@ -894,6 +895,17 @@ import android.widget.TextView;
             }
             return false;
         }
+        
+        private int mSettingsOldState = 0;
+        public void toggleSettings() {
+            if (mSettingsOldState == 0) {
+                mSettingsOldState = mMode;
+                thread.setState(LunarThread.STATE_SETTINGS);
+            } else {
+                thread.setState(mSettingsOldState);
+                mSettingsOldState = 0;
+            }
+        }
     }
 
     /** Handle to the application context, used to e.g. fetch Drawables. */
@@ -1052,7 +1064,8 @@ import android.widget.TextView;
                         mode == LunarThread.STATE_SHOWING_HIGH_SCORE ||
                         mode == LunarThread.STATE_SHOWING_YOUR_SCORE ||
                         mode == LunarThread.STATE_ASKING_YOUR_NAME ||
-                        mode == LunarThread.STATE_ASKING_FOR_HIGH_SCORES) {
+                        mode == LunarThread.STATE_ASKING_FOR_HIGH_SCORES ||
+                        mode == LunarThread.STATE_SETTINGS) {
                     mRegularLayout.setVisibility(View.GONE);
                     mScoresLayout.setVisibility(View.VISIBLE);
                 } else {
@@ -1088,25 +1101,28 @@ import android.widget.TextView;
                         
                     case LunarThread.STATE_SHOWING_YOUR_SCORE:
                         mYourScore.setText("Your Score = " + score);
+                        mYourScore.setVisibility(View.VISIBLE);
                         mSubmitText.setVisibility(View.VISIBLE);
                         mNAH.setVisibility(View.VISIBLE);
                         mYEAH.setVisibility(View.VISIBLE);
-                        mNAME.setVisibility(View.VISIBLE);
+                        mNAME.setVisibility(View.INVISIBLE);
                         mHighScores.setVisibility(View.INVISIBLE);
-                        mSERVER.setVisibility(View.VISIBLE);
-                        mPORT.setVisibility(View.VISIBLE);
+                        mSERVER.setVisibility(View.INVISIBLE);
+                        mPORT.setVisibility(View.INVISIBLE);
                         break;
                     case LunarThread.STATE_ASKING_YOUR_NAME:
+                        mYourScore.setVisibility(View.VISIBLE);
                         mNAH.setVisibility(View.INVISIBLE);
                         mYEAH.setVisibility(View.INVISIBLE);
                         mNAME.setVisibility(View.VISIBLE);
                         mSubmitButton.setVisibility(View.VISIBLE);
                         mSubmitText.setVisibility(View.INVISIBLE);
                         mHighScores.setVisibility(View.INVISIBLE);
-                        mSERVER.setVisibility(View.VISIBLE);
-                        mPORT.setVisibility(View.VISIBLE);
+                        mSERVER.setVisibility(View.INVISIBLE);
+                        mPORT.setVisibility(View.INVISIBLE);
                         break;
                     case LunarThread.STATE_SENDING_YOUR_SCORE:
+                        mYourScore.setVisibility(View.VISIBLE);
                         mNAH.setVisibility(View.INVISIBLE);
                         mYEAH.setVisibility(View.INVISIBLE);
                         mNAME.setVisibility(View.INVISIBLE);
@@ -1119,6 +1135,7 @@ import android.widget.TextView;
                         submit(thread.mScore);
                         break;
                     case LunarThread.STATE_ASKING_FOR_HIGH_SCORES:
+                        mYourScore.setVisibility(View.VISIBLE);
                         mNAH.setVisibility(View.INVISIBLE);
                         mYEAH.setVisibility(View.INVISIBLE);
                         mNAME.setVisibility(View.INVISIBLE);
@@ -1131,6 +1148,7 @@ import android.widget.TextView;
                         queryForScores();
                         break;
                     case LunarThread.STATE_SHOWING_HIGH_SCORE:
+                        mYourScore.setVisibility(View.VISIBLE);
                         mNAH.setVisibility(View.INVISIBLE);
                         mYEAH.setVisibility(View.INVISIBLE);
                         mNAME.setVisibility(View.INVISIBLE);
@@ -1141,6 +1159,17 @@ import android.widget.TextView;
                         String scores = getScores();
                         mHighScores.setText(scores);
                         mHighScores.setVisibility(View.VISIBLE);
+                        break;
+                    case LunarThread.STATE_SETTINGS:
+                        mYourScore.setVisibility(View.INVISIBLE);
+                        mNAH.setVisibility(View.INVISIBLE);
+                        mYEAH.setVisibility(View.INVISIBLE);
+                        mNAME.setVisibility(View.INVISIBLE);
+                        mSubmitText.setVisibility(View.INVISIBLE);
+                        mSubmitButton.setVisibility(View.INVISIBLE);
+                        mSERVER.setVisibility(View.VISIBLE);
+                        mPORT.setVisibility(View.VISIBLE);
+                        mHighScores.setVisibility(View.INVISIBLE);
                         break;
                     default:
                         throw new RuntimeException("Unknown staaaaate: " + mode);
