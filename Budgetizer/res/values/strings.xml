@@ -1,0 +1,15 @@
+<resources>
+
+    <string name="app_name">Budgetizer</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="menu_settings">Settings</string>
+    <string name="title_activity_main">Budgetizer 3000</string>
+    <string name="budget">Budget</string>
+    <string name="period">Period</string>
+    <string name="rt_prio">RT Priority</string>
+    <string name="pid">PID</string>
+    <string name="cancel_budget">Cancel Budget</string>
+    <string name="set_budget">Set Budget</string>
+    <string name="wait_period">Wait For Period</string>
+
+</resources>
