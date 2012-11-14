@@ -8,7 +8,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-public class MainActivity extends Activity {
+public class Budgetizer extends Activity {
     
     EditText pidText;
     EditText budgetText;

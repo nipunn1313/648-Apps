@@ -21,18 +21,15 @@ Java_com_budget_budgetizer_MySyscall_SetProcessBudget(JNIEnv *env, jclass class,
     period.tv_sec = period_sec;
     period.tv_nsec = period_nsec;
 
-    return budget_sec + budget_nsec;
-    //return syscall(378, pid, budget, period, rtprio);
+    return syscall(378, pid, budget, period, rtprio);
 }
 
 JNIEXPORT jint JNICALL
 Java_com_budget_budgetizer_MySyscall_CancelBudget(JNIEnv *env, jclass class, jint pid) {
-	return pid + 1000;
-	//return syscall(379, pid);
+	return syscall(379, pid);
 }
 
 JNIEXPORT jint JNICALL
 Java_com_budget_budgetizer_MySyscall_WaitUntilNextPeriod(JNIEnv *env, jclass class, jint pid) {
-	return pid + 2000;
-    //return syscall(380, pid);
+	return syscall(380, pid);
 }
