@@ -1,0 +1,9 @@
+<resources>
+
+    <string name="app_name">AppDisp</string>
+    <string name="menu_settings">Settings</string>
+    <string name="title_activity_main">AppDisp</string>
+    <string name="button_text">Set Brightness Level (0-255)</string>
+    <string name="brightnessHint">Brightness</string>
+
+</resources>
