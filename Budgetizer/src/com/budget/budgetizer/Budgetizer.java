@@ -49,9 +49,8 @@ public class Budgetizer extends Activity {
 
     private void setBudget() {
         int pid;
-        MySyscall.TimeSpec budget;
+        long budget;
         MySyscall.TimeSpec period;
-        int rtPrio;
         
         try {
             String pidStr = pidText.getText().toString();
@@ -63,10 +62,9 @@ public class Budgetizer extends Activity {
         
         try {
             String budgetString = budgetText.getText().toString();
-            double budg = Double.parseDouble(budgetString);
-            budget = new MySyscall.TimeSpec(budg);
+            budget = Long.parseLong(budgetString);
         } catch (NumberFormatException e) {
-            helloText.setText("budget must be a double");
+            helloText.setText("budget must be a long");
             return;
         }
         
@@ -79,15 +77,7 @@ public class Budgetizer extends Activity {
             return;
         }
         
-        try {
-            String prioString = rtPrioText.getText().toString();
-            rtPrio = Integer.parseInt(prioString);
-        } catch (NumberFormatException e) {
-            helloText.setText("RT Priority must be an integer");
-            return;
-        }
-        
-        int result = MySyscall.SetProcessBudget(pid, budget, period, rtPrio);
+        int result = MySyscall.SetProcessBudget(pid, budget, period);
         helloText.setText("setProcessBudget returned: " + result);
     }
     

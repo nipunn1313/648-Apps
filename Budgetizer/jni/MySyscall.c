@@ -10,18 +10,16 @@
 
 JNIEXPORT jint JNICALL
 Java_com_budget_budgetizer_MySyscall_SetProcessBudget(JNIEnv *env, jclass class,
-        jint pid, jlong budget_sec, jlong budget_nsec,
-        jlong period_sec, jlong period_nsec, jint rtprio) {
+        jint pid, jlong budget_cycles,
+        jlong period_sec, jlong period_nsec) {
 
-    struct timespec budget;
     struct timespec period;
+	unsigned long budget = budget_cycles;
 
-    budget.tv_sec = budget_sec;
-    budget.tv_nsec = budget_nsec;
     period.tv_sec = period_sec;
     period.tv_nsec = period_nsec;
 
-    return syscall(378, pid, budget, period, rtprio);
+    return syscall(378, pid, budget, period);
 }
 
 JNIEXPORT jint JNICALL

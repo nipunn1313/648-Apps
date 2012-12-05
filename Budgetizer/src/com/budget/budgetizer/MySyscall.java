@@ -1,13 +1,13 @@
 package com.budget.budgetizer;
 
 public class MySyscall {
-    native private static int SetProcessBudget(int pid, long budget_sec, long budget_nsec,
-            long period_sec, long period_nsec, int rtprio);
+    native private static int SetProcessBudget(int pid, long budget_cycles,
+            long period_sec, long period_nsec);
     native public static int CancelBudget(int pid);
     native public static int WaitUntilNextPeriod(int pid);
     
-    public static int SetProcessBudget(int pid, TimeSpec budget, TimeSpec period, int rtprio) {
-        return SetProcessBudget(pid, budget.tv_sec, budget.tv_nsec, period.tv_sec, period.tv_nsec, rtprio);
+    public static int SetProcessBudget(int pid, long budget, TimeSpec period) {
+        return SetProcessBudget(pid, budget, period.tv_sec, period.tv_nsec);
     }
     
     static class TimeSpec {
